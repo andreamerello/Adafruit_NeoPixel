@@ -2264,6 +2264,7 @@ void Adafruit_NeoPixel::show(void) {
 
   uint8_t *ptr, *end, p, bitMask, portNum;
   uint32_t pinMask;
+  uint32_t reg;
 
   portNum = g_APinDescription[pin].ulPort;
   pinMask = 1ul << g_APinDescription[pin].ulPin;
@@ -2278,22 +2279,26 @@ void Adafruit_NeoPixel::show(void) {
 #if defined(NEO_KHZ400) // 800 KHz check needed only if 400 KHz support enabled
   if (is800KHz) {
 #endif
+    reg = NVMCTRL->CTRLB.reg;
+    NVMCTRL->CTRLB.reg = reg | NVMCTRL_CTRLB_CACHEDIS;
+
     for (;;) {
       *set = pinMask;
-      asm("nop; nop; nop; nop; nop; nop; nop; nop;");
+      asm("nop; nop; nop; nop; ");
       if (p & bitMask) {
         asm("nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop;");
+	    "nop; nop; nop; nop;"
+
+            );
         *clr = pinMask;
       } else {
         *clr = pinMask;
         asm("nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop;");
+	    "nop; nop; nop; nop;"
+            );
       }
       if (bitMask >>= 1) {
-        asm("nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+        asm("nop; nop; nop; nop; nop; nop;");
       } else {
         if (ptr >= end)
           break;
@@ -2301,6 +2306,8 @@ void Adafruit_NeoPixel::show(void) {
         bitMask = 0x80;
       }
     }
+    NVMCTRL->CTRLB.reg = reg;
+
 #if defined(NEO_KHZ400)
   } else { // 400 KHz bitstream
     for (;;) {
